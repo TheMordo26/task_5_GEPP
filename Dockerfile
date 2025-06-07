@@ -13,8 +13,6 @@ RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-avail
 
 COPY . /var/www/html/
 
-COPY .env /var/www/html/.env
-
 WORKDIR /var/www/html/
 
 RUN chown -R www-data:www-data /var/www/html/ && chmod -R 755 /var/www/html/
