@@ -15,8 +15,6 @@ COPY . /var/www/html/
 
 WORKDIR /var/www/html/
 
-RUN chown -R www-data:www-data /var/www/html/ && chmod -R 755 /var/www/html/
-
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
 RUN composer install --no-dev --optimize-autoloader --no-scripts
@@ -24,5 +22,8 @@ RUN composer install --no-dev --optimize-autoloader --no-scripts
 RUN composer dump-env prod \
     && php bin/console cache:clear --no-warmup \
     && php bin/console cache:warmup
+
+RUN chown -R www-data:www-data var vendor public \
+    && chmod -R 755 var vendor public
 
 EXPOSE 80
