@@ -10,7 +10,7 @@ COPY . /var/www/html/
 
 WORKDIR /var/www/html/
 
-RUN composer install --no-interaction --no-dev --optimize-autoloader
+RUN composer install --no-interaction --no-dev --optimize-autoloader --no-scripts
 
 RUN chown -R www-data:www-data /var/www/html/ \
     && chmod -R 755 /var/www/html/
