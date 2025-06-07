@@ -19,7 +19,7 @@ RUN chown -R www-data:www-data /var/www/html/ && chmod -R 755 /var/www/html/
 
 RUN composer install --no-dev --optimize-autoloader --no-scripts
 
-RUN composer dump-env prod \
+RUN composer dump-env prod --no-plugins \
     && php bin/console cache:clear --no-warmup \
     && php bin/console cache:warmup
 
