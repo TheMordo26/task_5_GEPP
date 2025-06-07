@@ -10,9 +10,8 @@ COPY . /var/www/html/
 
 WORKDIR /var/www/html/
 
-RUN composer install --no-interaction --no-dev --optimize-autoloader --no-scripts
-
-RUN composer dump-env prod \
+RUN composer install --no-interaction --no-dev --optimize-autoloader --no-scripts \
+    && composer dump-env prod --no-interaction --no-scripts -- --no-plugins=0 \
     && php bin/console cache:clear --no-warmup \
     && php bin/console cache:warmup
 
@@ -25,5 +24,3 @@ ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
 
 EXPOSE 80
-
-CMD ["apache2-foreground"]
