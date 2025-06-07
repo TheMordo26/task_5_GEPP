@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: symfony-app
+    env: docker
+    plan: free
+    branch: main
+    buildCommand: ""
+    startCommand: apache2-foreground
+    envVars:
+      - key: APP_ENV
+        value: prod
+      - key: APP_SECRET
+        value: your_secret_key_here
+      - key: DATABASE_URL
+        value: postgres://user:pass@hostname:5432/dbname
