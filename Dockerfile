@@ -4,28 +4,25 @@ RUN apt-get update && apt-get install -y \
     git unzip zip libicu-dev libonig-dev libxml2-dev libzip-dev libpq-dev \
     && docker-php-ext-install intl pdo pdo_pgsql zip
 
-RUN useradd -m symfony
-
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+RUN a2enmod rewrite
+
+ENV APACHE_DOCUMENT_ROOT /var/www/html/public
+RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
 
 COPY . /var/www/html/
 
+COPY .env /var/www/html/.env
+
 WORKDIR /var/www/html/
 
-RUN chown -R symfony:symfony /var/www/html
+RUN chown -R www-data:www-data /var/www/html/ && chmod -R 755 /var/www/html/
 
-USER symfony
-RUN composer install --no-dev --optimize-autoloader
+RUN composer install --no-dev --optimize-autoloader --no-scripts
 
-RUN composer dump-env prod
-
-USER root
-
-RUN php bin/console cache:clear --no-warmup \
+RUN composer dump-env prod \
+    && php bin/console cache:clear --no-warmup \
     && php bin/console cache:warmup
-
-RUN a2enmod rewrite
-ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
 
 EXPOSE 80
