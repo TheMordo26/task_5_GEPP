@@ -1,0 +1,256 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Book Store Generator{% endblock %}
+
+{% block body %}
+<h1 class="mb-4">Book Store Generator</h1>
+
+<div class="position-sticky top-0 bg-white z-3" style="border-bottom: 2px solid #dee2e6;">
+        <form id="controls-form" class="row g-3 px-3 pt-3 pb-2">
+            <div class="col-md-3">
+                <label for="region" class="form-label">Language & Region</label>
+                <select id="region" class="form-select">
+                    <option value="en_US" selected>English (USA)</option>
+                    <option value="es_ES">Spanish (Spain)</option>
+                    <option value="fr_FR">French (France)</option>
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label for="seed" class="form-label">Seed</label>
+                <div class="input-group">
+                    <input type="number" id="seed" class="form-control" min="0" max="999999" step="1" value="">
+                    <button type="button" id="random-seed" class="btn btn-outline-secondary">
+                    <i class="fas fa-dice"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <label for="likes" class="form-label">Avg. Likes per Book: <span id="likes-value">5.0</span></label>
+                <input type="range" id="likes" class="form-range" min="0" max="10" step="0.1" value="5">
+            </div>
+
+            <div class="col-md-3">
+                <label for="reviews" class="form-label">Avg. Reviews per Book</label>
+                <input type="number" id="reviews" class="form-control" step="0.1" value="3.5">
+            </div>
+        </form>
+
+        <div class="list-group mb-0 mt-1 px-3">
+            <div class="list-group-item fw-bold bg-light d-flex justify-content-between border rounded-1" style="margin-bottom: 6px;">
+                <div style="width: 5%">#</div>
+                <div style="width: 20%">ISBN</div>
+                <div style="width: 30%">Title</div>
+                <div style="width: 25%">Author(s)</div>
+                <div style="width: 20%">Publisher</div>
+            </div>
+        </div>
+</div>
+
+<div id="books-container" class="list-group"></div>
+
+<!-- Card View -->
+<div id="book-card" class="card mt-4" style="display: none;">
+    <div class="card-body">
+        <button class="btn-close float-end" id="close-card"></button>
+        <h5 class="card-title" id="card-title"></h5>
+        <p class="card-text"><strong>ISBN:</strong> <span id="card-isbn"></span></p>
+        <p class="card-text"><strong>Authors:</strong> <span id="card-authors"></span></p>
+        <p class="card-text"><strong>Publisher:</strong> <span id="card-publisher"></span></p>
+        <p class="card-text"><strong>Likes:</strong> <span id="card-likes"></span></p>
+        <p class="card-text"><strong>Reviews:</strong></p>
+        <ul id="card-reviews"></ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+    const booksContainer = document.getElementById('books-container');
+    const seedInput = document.getElementById('seed');
+    const likesInput = document.getElementById('likes');
+    const reviewsInput = document.getElementById('reviews');
+    const regionInput = document.getElementById('region');
+    const likesValue = document.getElementById('likes-value');
+
+    let currentPage = 1;
+    let loading = false;
+
+    function randomSeed() {
+        return Math.floor(Math.random() * 1_000_000);
+    }
+
+    function updateSeed() {
+        const newSeed = randomSeed();
+        seedInput.value = newSeed;
+    }
+
+    function hashISBN(isbn) {
+        let hash = 0;
+        for (let i = 0; i < isbn.length; i++) {
+            hash = (hash << 5) - hash + isbn.charCodeAt(i);
+            hash |= 0; // Convert to 32bit integer
+        }
+        return Math.abs(hash % 1000);
+    }
+
+    regionInput.addEventListener('change', () => {
+        currentPage = 1;
+        booksContainer.innerHTML = '';
+        loadBooks();
+    });
+
+    document.getElementById('random-seed').addEventListener('click', () => {
+        updateSeed();
+        currentPage = 1;
+        booksContainer.innerHTML = '';
+        loadBooks();
+    });
+
+    likesInput.addEventListener('change', () => {
+    likesValue.textContent = likesInput.value;
+    currentPage = 1;
+    booksContainer.innerHTML = '';
+    loadBooks();
+    });
+    
+    seedInput.addEventListener('change', () => {
+    currentPage = 1;
+    booksContainer.innerHTML = '';
+    loadBooks();
+    });
+
+    reviewsInput.addEventListener('change', () => {
+        currentPage = 1;
+        booksContainer.innerHTML = '';
+        loadBooks();
+    });
+
+    likesInput.addEventListener('input', () => {
+        likesValue.textContent = likesInput.value;
+    });
+
+    function extractPublisherName(publisher) {
+        return publisher.replace(/\s*,?\s*\b\d{4}\b\s*$/, '').trim();
+    }
+
+    function extractPublisherYear(publisher) {
+        const match = publisher.match(/\b\d{4}\b/);
+        return match ? match[0] : '';
+    }
+
+    function createBookItem(book) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+        wrapper.style.cursor = 'pointer';
+
+        wrapper.innerHTML = `
+            <div style="width: 5%"><strong>#${book.index}</strong></div>
+            <div style="width: 18%; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <code>${book.isbn}</code>
+            </div>
+            <div style="width: 30%">${book.title}</div>
+            <div style="width: 24%; font-size: 0.875rem; line-height: 1.2;">
+                ${book.authors.filter(Boolean).join(', ')}
+            </div>
+            <div style="width: 18%; font-size: 0.875rem; color: #6c757d; line-height: 1.2;">
+                ${book.publisher}
+            </div>
+        `;
+
+        wrapper.addEventListener('click', () => {
+            toggleCard(book, wrapper);
+        });
+
+        return wrapper;
+    }
+
+    function toggleCard(book, item) {
+        const nextElement = item.nextElementSibling;
+        if (nextElement && nextElement.classList.contains('book-detail-card')) {
+            nextElement.remove();
+            return;
+        }
+
+        // Cierra cualquier otro card abierto
+        const existingCard = document.querySelector('.book-detail-card');
+        if (existingCard) {
+            existingCard.remove();
+        }
+
+        const imageId = hashISBN(book.isbn);
+        const card = document.createElement('div');
+        card.className = 'card book-detail-card mt-2 mb-2 position-relative';
+        card.style.width = '100%';    
+        card.style.boxSizing = 'border-box';
+        card.innerHTML = `
+            <button type="button" class="btn-close position-absolute top-0 end-0 m-3" aria-label="Close"></button>
+            <div class="d-flex">
+                <div style="width: 140px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; margin-right: 1rem;">
+                    <div class="book-cover-container mb-2 position-relative">
+                        <img src="https://picsum.photos/seed/${imageId}/200/300" class="book-cover" alt="Book cover">
+                        <div class="overlay-top text-white text-center px-2 py-1">
+                            <em style="font-size: 0.75rem;">${book.authors.filter(Boolean).join(', ')}</em>
+                        </div>
+                        <div class="overlay-bottom text-white text-center px-2 py-1">
+                            <strong style="font-size: 0.9rem;">${book.title}</strong>
+                        </div>
+                    </div>
+                    <div class="likes-container text-center">
+                        <i class="bi bi-hand-thumbs-up-fill text-primary fs-4"></i>
+                        <span class="ms-1 fs-5">${book.likes}</span>
+                    </div>
+                </div>
+                <div class="flex-grow-1 ps-3">
+                    <h4 class="card-title">${book.title}</h4>
+                    <p class="mb-1">by <strong>${book.authors.filter(Boolean).join(', ')}</strong></p>
+                    <p class="text-muted fst-italic mb-3"> ${extractPublisherName(book.publisher)}</p>
+                    <p class="card-text"><strong>Reviews:</strong></p>
+                    <ul>${book.reviews.map(r => `<li>"${r.text}" — ${r.author}</li>`).join('')}</ul>
+                </div>
+            </div>
+        `;
+
+card.querySelector('.btn-close').addEventListener('click', () => {
+    card.remove();
+});
+
+        item.insertAdjacentElement('afterend', card);
+    }
+
+    async function loadBooks() {
+        if (loading) return;
+        loading = true;
+
+        const params = new URLSearchParams({
+            region: regionInput.value,
+            seed: seedInput.value,
+            likes: likesInput.value,
+            reviews: reviewsInput.value,
+            page: currentPage
+        });
+
+        const res = await fetch(`/books?${params.toString()}`);
+        const books = await res.json();
+
+        books.forEach(book => {
+            booksContainer.appendChild(createBookItem(book));
+        });
+
+        currentPage++;
+        loading = false;
+    }
+
+    window.addEventListener('scroll', () => {
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) {
+            loadBooks();
+        }
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+        updateSeed();
+        loadBooks();
+    });
+</script>
+{% endblock %}
