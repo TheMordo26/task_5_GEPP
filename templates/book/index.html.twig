@@ -76,6 +76,7 @@
 
     let currentPage = 1;
     let loading = false;
+    let bookIndexCounter = 1;
 
     function randomSeed() {
         return Math.floor(Math.random() * 1_000_000);
@@ -90,42 +91,26 @@
         let hash = 0;
         for (let i = 0; i < isbn.length; i++) {
             hash = (hash << 5) - hash + isbn.charCodeAt(i);
-            hash |= 0; // Convert to 32bit integer
+            hash |= 0;
         }
         return Math.abs(hash % 1000);
     }
 
-    regionInput.addEventListener('change', () => {
+    function resetAndReload() {
         currentPage = 1;
+        bookIndexCounter = 1;
         booksContainer.innerHTML = '';
         loadBooks();
-    });
+    }
 
+    regionInput.addEventListener('change', resetAndReload);
     document.getElementById('random-seed').addEventListener('click', () => {
         updateSeed();
-        currentPage = 1;
-        booksContainer.innerHTML = '';
-        loadBooks();
+        resetAndReload();
     });
-
-    likesInput.addEventListener('change', () => {
-    likesValue.textContent = likesInput.value;
-    currentPage = 1;
-    booksContainer.innerHTML = '';
-    loadBooks();
-    });
-    
-    seedInput.addEventListener('change', () => {
-    currentPage = 1;
-    booksContainer.innerHTML = '';
-    loadBooks();
-    });
-
-    reviewsInput.addEventListener('change', () => {
-        currentPage = 1;
-        booksContainer.innerHTML = '';
-        loadBooks();
-    });
+    likesInput.addEventListener('change', resetAndReload);
+    seedInput.addEventListener('change', resetAndReload);
+    reviewsInput.addEventListener('change', resetAndReload);
 
     likesInput.addEventListener('input', () => {
         likesValue.textContent = likesInput.value;
@@ -146,7 +131,7 @@
         wrapper.style.cursor = 'pointer';
 
         wrapper.innerHTML = `
-            <div style="width: 5%"><strong>#${book.index}</strong></div>
+            <div style="width: 5%"><strong>#${bookIndexCounter++}</strong></div>
             <div style="width: 18%; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                 <code>${book.isbn}</code>
             </div>
@@ -173,7 +158,6 @@
             return;
         }
 
-        // Cierra cualquier otro card abierto
         const existingCard = document.querySelector('.book-detail-card');
         if (existingCard) {
             existingCard.remove();
@@ -182,7 +166,7 @@
         const imageId = hashISBN(book.isbn);
         const card = document.createElement('div');
         card.className = 'card book-detail-card mt-2 mb-2 position-relative';
-        card.style.width = '100%';    
+        card.style.width = '100%';
         card.style.boxSizing = 'border-box';
         card.innerHTML = `
             <button type="button" class="btn-close position-absolute top-0 end-0 m-3" aria-label="Close"></button>
@@ -212,9 +196,9 @@
             </div>
         `;
 
-card.querySelector('.btn-close').addEventListener('click', () => {
-    card.remove();
-});
+        card.querySelector('.btn-close').addEventListener('click', () => {
+            card.remove();
+        });
 
         item.insertAdjacentElement('afterend', card);
     }
